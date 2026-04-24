@@ -6,6 +6,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import yaml
+
 
 # =========================
 # Edit only this section
@@ -17,28 +19,64 @@ from pathlib import Path
 DATASETS = [
     {
         "name": "archives020525_train",
-        "annotation": r"C:\shared\data0205\data02065\Archives020525\train.json",
-        "image_dir": r"C:\shared\data0205\data02065\Archives020525\train_images",
+        "annotation": r"C:\shared\data02065\d2\Archives020525\train.json",
+        "image_dir": r"C:\shared\data02065\d2\Archives020525\train_images",
         "split": "train",
     },
     {
         "name": "archives020525_eval",
-        "annotation": r"C:\shared\data0205\data02065\Archives020525\test.json",
-        "image_dir": r"C:\shared\data0205\data02065\Archives020525\test_images",
+        "annotation": r"C:\shared\data02065\d2\Archives020525\test.json",
+        "image_dir": r"C:\shared\data02065\d2\Archives020525\test_images",
         "split": "eval",
     },
-    # {
-    #     "name": "second_dataset_train",
-    #     "annotation": r"C:\path\to\second\train.json",
-    #     "image_dir": r"C:\path\to\second\train_images",
-    #     "split": "train",
-    # },
-    # {
-    #     "name": "second_dataset_eval",
-    #     "annotation": r"C:\path\to\second\test.json",
-    #     "image_dir": r"C:\path\to\second\test_images",
-    #     "split": "eval",
-    # },
+    {
+        "name": "ddi_100_train",
+        "annotation": r"C:\shared\data02065\d2\DDI_100\train.json",
+        "image_dir": r"C:\shared\data02065\d2\DDI_100\train_images",
+        "split": "train",
+    },
+    {
+        "name": "ddi_100_eval",
+        "annotation": r"C:\shared\data02065\d2\DDI_100\test.json",
+        "image_dir": r"C:\shared\data02065\d2\DDI_100\test_images",
+        "split": "eval",
+    },
+    {
+        "name": "icdar2015_train",
+        "annotation": r"C:\shared\data02065\d2\ICDAR2015\train.json",
+        "image_dir": r"C:\shared\data02065\d2\ICDAR2015\train_images",
+        "split": "train",
+    },
+    {
+        "name": "icdar2015_eval",
+        "annotation": r"C:\shared\data02065\d2\ICDAR2015\test.json",
+        "image_dir": r"C:\shared\data02065\d2\ICDAR2015\test_images",
+        "split": "eval",
+    },
+    {
+        "name": "school_notebooks_ru_train",
+        "annotation": r"C:\shared\data02065\d2\school_notebooks_RU\train.json",
+        "image_dir": r"C:\shared\data02065\d2\school_notebooks_RU\train_images",
+        "split": "train",
+    },
+    {
+        "name": "school_notebooks_ru_eval",
+        "annotation": r"C:\shared\data02065\d2\school_notebooks_RU\test.json",
+        "image_dir": r"C:\shared\data02065\d2\school_notebooks_RU\test_images",
+        "split": "eval",
+    },
+    {
+        "name": "totaltext_train",
+        "annotation": r"C:\shared\data02065\d2\TotalText\train.json",
+        "image_dir": r"C:\shared\data02065\d2\TotalText\train_images",
+        "split": "train",
+    },
+    {
+        "name": "totaltext_eval",
+        "annotation": r"C:\shared\data02065\d2\TotalText\test.json",
+        "image_dir": r"C:\shared\data02065\d2\TotalText\test_images",
+        "split": "eval",
+    },
 ]
 
 # mobile is lighter and usually easier to start with. Change to "server" for
@@ -50,13 +88,14 @@ SAVE_MODEL_DIR = "output/custom_ppocrv5_det_coco"
 
 TRAIN_RATIO_IF_NO_EVAL = 0.9
 SEED = 42
+TRAIN_IMAGE_SIZE = 1408
 
 # Leave empty for normal single-process training. Set "0" or "0,1" to run
 # through paddle.distributed.launch.
 GPUS = ""
 
 EPOCH_NUM = 200
-BATCH_SIZE_PER_CARD = 4
+BATCH_SIZE_PER_CARD = 1
 TRAIN_NUM_WORKERS = None
 EVAL_NUM_WORKERS = None
 LEARNING_RATE = 0.0005
@@ -270,6 +309,25 @@ def get_config_path():
     raise ValueError('MODEL_SIZE must be "mobile" or "server"')
 
 
+def write_prepared_config(base_config_path, output_config_path):
+    with base_config_path.open("rb") as file:
+        config = yaml.load(file, Loader=yaml.Loader)
+
+    if TRAIN_IMAGE_SIZE is not None:
+        size = int(TRAIN_IMAGE_SIZE)
+        config["Global"]["d2s_train_image_shape"] = [3, size, size]
+        for transform in config["Train"]["dataset"]["transforms"]:
+            if "EastRandomCropData" in transform:
+                transform["EastRandomCropData"]["size"] = [size, size]
+                break
+        else:
+            raise RuntimeError("EastRandomCropData was not found in Train transforms.")
+
+    output_config_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_config_path.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(config, file, allow_unicode=True, sort_keys=False)
+
+
 def build_training_command(config_path, train_list_path, eval_list_path):
     if GPUS.strip():
         command = [
@@ -322,11 +380,13 @@ def print_dataset_table(rows):
 
 def main():
     random.seed(SEED)
-    config_path = get_config_path()
-    if not config_path.is_file():
-        raise FileNotFoundError(f"Config not found: {config_path}")
-
     prepared_data_dir = resolve_path(PREPARED_DATA_DIR)
+    base_config_path = get_config_path()
+    config_path = prepared_data_dir / f"PP-OCRv5_{MODEL_SIZE}_det_custom.yml"
+    if not base_config_path.is_file():
+        raise FileNotFoundError(f"Config not found: {base_config_path}")
+    write_prepared_config(base_config_path, config_path)
+
     train_list_path = prepared_data_dir / "train_det_label.txt"
     eval_list_path = prepared_data_dir / "eval_det_label.txt"
     summary_path = prepared_data_dir / "dataset_summary.json"
@@ -383,7 +443,8 @@ def main():
 
     command = build_training_command(config_path, train_list_path, eval_list_path)
 
-    print(f"Config: {config_path}")
+    print(f"Base config: {base_config_path}")
+    print(f"Prepared config: {config_path}")
     print(f"Train label: {train_list_path}")
     print(f"Eval label: {eval_list_path}")
     print(f"Summary: {summary_path}")
