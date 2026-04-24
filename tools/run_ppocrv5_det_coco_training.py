@@ -99,6 +99,7 @@ BATCH_SIZE_PER_CARD = 1
 TRAIN_NUM_WORKERS = None
 EVAL_NUM_WORKERS = None
 LEARNING_RATE = 0.0005
+EVAL_BATCH_STEP = 1500
 PRETRAINED_MODEL = None
 CHECKPOINTS = None
 
@@ -143,6 +144,27 @@ def polygon_area(points):
     return abs(area) * 0.5
 
 
+def order_quad_points(points):
+    points = [[float(x), float(y)] for x, y in points]
+    ordered = [[0.0, 0.0] for _ in range(4)]
+    sums = [x + y for x, y in points]
+    diffs = [x - y for x, y in points]
+
+    ordered[0] = points[sums.index(min(sums))]
+    ordered[2] = points[sums.index(max(sums))]
+    ordered[1] = points[diffs.index(max(diffs))]
+    ordered[3] = points[diffs.index(min(diffs))]
+    return [[round(x, 2), round(y, 2)] for x, y in ordered]
+
+
+def normalize_polygon_points(points):
+    if len(points) == 4:
+        points = order_quad_points(points)
+    if polygon_area(points) <= 1.0:
+        return []
+    return points
+
+
 def flat_polygon_to_points(poly):
     if not isinstance(poly, list) or len(poly) < 8 or len(poly) % 2 != 0:
         return []
@@ -156,7 +178,7 @@ def flat_polygon_to_points(poly):
         if not math.isfinite(x) or not math.isfinite(y):
             return []
         points.append([round(x, 2), round(y, 2)])
-    return points if polygon_area(points) > 1.0 else []
+    return normalize_polygon_points(points)
 
 
 def bbox_to_points(bbox):
@@ -355,6 +377,7 @@ def build_training_command(config_path, train_list_path, eval_list_path):
         "Train.loader.num_workers": TRAIN_NUM_WORKERS,
         "Eval.loader.num_workers": EVAL_NUM_WORKERS,
         "Optimizer.lr.learning_rate": LEARNING_RATE,
+        "Global.eval_batch_step": [0, EVAL_BATCH_STEP] if EVAL_BATCH_STEP else None,
         "Global.pretrained_model": PRETRAINED_MODEL,
         "Global.checkpoints": CHECKPOINTS,
     }
