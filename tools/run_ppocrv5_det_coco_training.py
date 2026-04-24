@@ -88,7 +88,8 @@ SAVE_MODEL_DIR = "output/custom_ppocrv5_det_coco"
 
 TRAIN_RATIO_IF_NO_EVAL = 0.9
 SEED = 42
-TRAIN_IMAGE_SIZE = 1408
+TRAIN_IMAGE_SIZE = 1024
+EVAL_LIMIT_SIDE_LEN = 1408
 MIN_POLYGON_SIDE = 8
 
 # Leave empty for normal single-process training. Set "0" or "0,1" to run
@@ -349,6 +350,17 @@ def write_prepared_config(base_config_path, output_config_path):
                 break
         else:
             raise RuntimeError("EastRandomCropData was not found in Train transforms.")
+
+    if EVAL_LIMIT_SIDE_LEN is not None:
+        for transform in config["Eval"]["dataset"]["transforms"]:
+            if "DetResizeForTest" in transform:
+                transform["DetResizeForTest"] = {
+                    "limit_side_len": int(EVAL_LIMIT_SIDE_LEN),
+                    "limit_type": "max",
+                }
+                break
+        else:
+            raise RuntimeError("DetResizeForTest was not found in Eval transforms.")
 
     output_config_path.parent.mkdir(parents=True, exist_ok=True)
     with output_config_path.open("w", encoding="utf-8") as file:
