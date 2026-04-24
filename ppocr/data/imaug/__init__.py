@@ -16,7 +16,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .iaa_augment import IaaAugment
+try:
+    from .iaa_augment import IaaAugment
+except Exception:
+    IaaAugment = None
 from .make_border_map import MakeBorderMap
 from .make_shrink_map import MakeShrinkMap
 from .random_crop_data import EastRandomCropData, RandomCropImgMask
@@ -61,8 +64,14 @@ from .fce_aug import *
 from .fce_targets import FCENetTargets
 from .ct_process import *
 from .drrg_targets import DRRGTargets
-from .latex_ocr_aug import *
-from .unimernet_aug import *
+try:
+    from .latex_ocr_aug import *
+except Exception:
+    pass
+try:
+    from .unimernet_aug import *
+except Exception:
+    pass
 
 
 def transform(data, ops=None):

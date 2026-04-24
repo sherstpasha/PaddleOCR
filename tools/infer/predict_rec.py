@@ -44,6 +44,7 @@ class TextRecognizer(object):
             if model_name and model_name not in [
                 "PP-OCRv5_mobile_rec",
                 "PP-OCRv5_server_rec",
+                "cyrillic_PP-OCRv5_mobile_rec",
                 "korean_PP-OCRv5_mobile_rec",
                 "eslav_PP-OCRv5_mobile_rec",
                 "latin_PP-OCRv5_mobile_rec",

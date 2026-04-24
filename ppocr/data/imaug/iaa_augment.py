@@ -21,13 +21,22 @@ import os
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 import numpy as np
-import albumentations as A
-from albumentations.core.transforms_interface import DualTransform
-from albumentations.augmentations.geometric import functional as fgeometric
 from packaging import version
+try:
+    import albumentations as A
+    from albumentations.core.transforms_interface import DualTransform
+    from albumentations.augmentations.geometric import functional as fgeometric
 
-ALBU_VERSION = version.parse(A.__version__)
-IS_ALBU_NEW_VERSION = ALBU_VERSION >= version.parse("1.4.15")
+    ALBU_VERSION = version.parse(A.__version__)
+    IS_ALBU_NEW_VERSION = ALBU_VERSION >= version.parse("1.4.15")
+    _ALBU_IMPORT_ERROR = None
+except Exception as exc:
+    A = None
+    DualTransform = object
+    fgeometric = None
+    ALBU_VERSION = None
+    IS_ALBU_NEW_VERSION = False
+    _ALBU_IMPORT_ERROR = exc
 
 
 # Custom resize transformation mimicking Imgaug's behavior with scaling
@@ -39,6 +48,8 @@ class ImgaugLikeResize(DualTransform):
 
     # Resize the image based on a randomly chosen scale within the scale range
     def apply(self, img, scale=1.0, **params):
+        if fgeometric is None:
+            raise RuntimeError("Albumentations is unavailable") from _ALBU_IMPORT_ERROR
         height, width = img.shape[:2]
         new_height = int(height * scale)
         new_width = int(width * scale)
@@ -76,6 +87,10 @@ class AugmenterBuilder(object):
 
     # Recursive method to construct augmentation pipeline based on provided arguments
     def build(self, args, root=True):
+        if A is None:
+            raise RuntimeError(
+                "Albumentations is unavailable, IaaAugment cannot be used"
+            ) from _ALBU_IMPORT_ERROR
         if args is None or len(args) == 0:
             return None
         elif isinstance(args, list):
@@ -174,6 +189,10 @@ class AugmenterBuilder(object):
 # Wrapper class for image and polygon transformations using Imgaug-style augmentation
 class IaaAugment:
     def __init__(self, augmenter_args=None, **kwargs):
+        if A is None:
+            raise RuntimeError(
+                "Albumentations is unavailable, IaaAugment cannot be used"
+            ) from _ALBU_IMPORT_ERROR
         if augmenter_args is None:
             # Default augmenters if none are specified
             augmenter_args = [
