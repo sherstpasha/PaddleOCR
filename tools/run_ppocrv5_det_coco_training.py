@@ -89,6 +89,7 @@ SAVE_MODEL_DIR = "output/custom_ppocrv5_det_coco"
 TRAIN_RATIO_IF_NO_EVAL = 0.9
 SEED = 42
 TRAIN_IMAGE_SIZE = 1408
+MIN_POLYGON_SIDE = 8
 
 # Leave empty for normal single-process training. Set "0" or "0,1" to run
 # through paddle.distributed.launch.
@@ -160,6 +161,10 @@ def order_quad_points(points):
 def normalize_polygon_points(points):
     if len(points) == 4:
         points = order_quad_points(points)
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    if min(max(xs) - min(xs), max(ys) - min(ys)) < MIN_POLYGON_SIDE:
+        return []
     if polygon_area(points) <= 1.0:
         return []
     return points
