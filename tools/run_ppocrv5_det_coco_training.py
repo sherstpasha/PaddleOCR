@@ -17,9 +17,15 @@ from pathlib import Path
 DATASETS = [
     {
         "name": "archives020525_train",
+        "annotation": r"C:\shared\data0205\data02065\Archives020525\train.json",
+        "image_dir": r"C:\shared\data0205\data02065\Archives020525\train_images",
+        "split": "train",
+    },
+    {
+        "name": "archives020525_eval",
         "annotation": r"C:\shared\data0205\data02065\Archives020525\test.json",
         "image_dir": r"C:\shared\data0205\data02065\Archives020525\test_images",
-        "split": "train",
+        "split": "eval",
     },
     # {
     #     "name": "second_dataset_train",
@@ -49,11 +55,11 @@ SEED = 42
 # through paddle.distributed.launch.
 GPUS = ""
 
-EPOCH_NUM = None
-BATCH_SIZE_PER_CARD = None
+EPOCH_NUM = 200
+BATCH_SIZE_PER_CARD = 4
 TRAIN_NUM_WORKERS = None
 EVAL_NUM_WORKERS = None
-LEARNING_RATE = None
+LEARNING_RATE = 0.0005
 PRETRAINED_MODEL = None
 CHECKPOINTS = None
 
